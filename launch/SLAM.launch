@@ -1,0 +1,10 @@
+<launch>
+
+ <node pkg="px4_offboard" type="teleop" name="teleop" output="screen">
+ </node>
+
+ <node pkg="px4_offboard" type="SLAM" name="fcu" output="screen">
+ </node>
+
+</launch>
+
