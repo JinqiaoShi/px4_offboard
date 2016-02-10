@@ -69,7 +69,7 @@ void CtrlPx4::stateCallback(const mavros_msgs::State state)
 
 void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in)
 {
-    OffSw = (rc_in.channels[4]<1200) && (rc_in.channels[6]>1200); //
+    OffSw = (rc_in.channels[6]>1200); //
 }
 
 void CtrlPx4::joyStateCallback(const std_msgs::Byte state)
