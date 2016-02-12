@@ -2,6 +2,8 @@
 #ifndef CtrlPx4_H_
 #define CtrlPx4_H_
 
+#define ACCELERATION
+
 class CtrlPx4
 {
 public:
@@ -29,6 +31,7 @@ private:
   ros::NodeHandle nh;
   ros::Publisher     mavros_vel_pub;
   ros::Publisher     mavros_pos_pub;
+  ros::Publisher     mavros_acc_pub;
 
   ros::ServiceClient mavros_set_mode_client;
   ros::ServiceClient mavros_armed_client;
@@ -41,8 +44,18 @@ private:
   //publishing msgs
   mavros_msgs::SetMode set_mode;
   mavros_msgs::CommandBool set_armed;
-  geometry_msgs::TwistStamped fmu_controller_setvel;
+
+  #ifdef ACCELERATION
+  geometry_msgs:: Vector3Stamped fmu_controller_setpoint;
+  #endif
+
+  #ifdef VELOCITY
+  geometry_msgs::TwistStamped fmu_controller_setpoint;
+  #endif
+
+  #ifdef POSE
   geometry_msgs::PoseStamped  fmu_controller_setpoint;
+  #endif
 };
 
 #endif
