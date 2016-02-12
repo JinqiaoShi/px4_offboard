@@ -3,7 +3,6 @@
 
 CtrlPx4::CtrlPx4()
 {
-  mavros_acc_pub         =   nh.advertise<geometry_msgs::Vector3Stamped>("/mavros/setpoint_accel/accel",50);
   mavros_pos_pub         =   nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local",50);
   mavros_vel_pub         =   nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel",50);
   mavros_set_mode_client =   nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
@@ -16,7 +15,7 @@ CtrlPx4::CtrlPx4()
 
 bool CtrlPx4::commandUpdate()
 {
-//  if (OffSw) {
+  if (OffSw) {
     if (!stateCmp())
     {
         set_armed.request.value = state_set.armed;
@@ -31,34 +30,16 @@ bool CtrlPx4::commandUpdate()
         mavros_set_mode_client.call(set_mode);
     }
     // if state is armed publish fmu_controller commnad
-    if (state_set.armed)
+    if (state_read.armed)
     {
-
-      #ifdef VELOCITY
-      mavros_vel_pub.publish(fmu_controller_setpoint);
-      ROS_INFO("Command: [x: %f y:%f z: %f, yaw:%f]", fmu_controller_setpoint.twist.linear.x,fmu_controller_setpoint.twist.linear.y,fmu_controller_setpoint.twist.linear.z,fmu_controller_setpoint.twist.angular.z);
-      #endif
-
-      #ifdef ACCELERATION
-      mavros_acc_pub.publish(fmu_controller_setpoint);
-      ROS_INFO("Command: [x: %f y:%f z: %f]", fmu_controller_setpoint.vector.x,fmu_controller_setpoint.vector.y,fmu_controller_setpoint.vector.z);
-      #endif
-
+      mavros_vel_pub.publish(fmu_controller_setvel);
+      ROS_INFO("Command: [x: %f y:%f z: %f, yaw:%f]", fmu_controller_setvel.twist.linear.x,fmu_controller_setvel.twist.linear.y,fmu_controller_setvel.twist.linear.z,fmu_controller_setvel.twist.angular.z);
     }
-<<<<<<< HEAD
-  //}
-  //else
-  //{
-  //  ROS_INFO("In Manual Mode");
-  //}
-
-=======
   }
   else
   {
     //ROS_INFO("In Manual Mode");
   }
->>>>>>> 641aef6ceebd1eced7568ac42689d3eba663d93b
 
 }
 
@@ -72,23 +53,12 @@ bool CtrlPx4::stateCmp()
 
 void CtrlPx4::joyVelCallback(const geometry_msgs::Twist twist)
 {
-    #ifdef VELOCITY
-    fmu_controller_setpoint.twist.linear.x = twist.linear.x;
-    fmu_controller_setpoint.twist.linear.y = twist.linear.y;
-    fmu_controller_setpoint.twist.linear.z = twist.linear.z;
-    fmu_controller_setpoint.twist.angular.x = twist.angular.x;
-    fmu_controller_setpoint.twist.angular.y = twist.angular.y;
-    fmu_controller_setpoint.twist.angular.z = twist.angular.z;
-    #endif
-
-    #ifdef ACCELERATION
-    fmu_controller_setpoint.vector.x = twist.linear.x;
-    fmu_controller_setpoint.vector.y = twist.linear.y;
-    fmu_controller_setpoint.vector.z = twist.linear.z;
-    // fmu_controller_setpoint.vector.twist.angular.x = twist.angular.x;
-    // fmu_controller_setpoint.vector.twist.angular.y = twist.angular.y;
-    // fmu_controller_setpoint.vector.twist.angular.z = twist.angular.z;
-    #endif
+    fmu_controller_setvel.twist.linear.x = twist.linear.x;
+    fmu_controller_setvel.twist.linear.y = twist.linear.y;
+    fmu_controller_setvel.twist.linear.z = twist.linear.z;
+    fmu_controller_setvel.twist.angular.x = twist.angular.x;
+    fmu_controller_setvel.twist.angular.y = twist.angular.y;
+    fmu_controller_setvel.twist.angular.z = twist.angular.z;
 }
 
 void CtrlPx4::stateCallback(const mavros_msgs::State state)
@@ -99,7 +69,7 @@ void CtrlPx4::stateCallback(const mavros_msgs::State state)
 
 void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in)
 {
-    OffSw = (rc_in.channels[6]>1200); //
+    OffSw = (rc_in.channels[4]<1800) && (rc_in.channels[6]>1200); //
 }
 
 void CtrlPx4::joyStateCallback(const std_msgs::Byte state)
