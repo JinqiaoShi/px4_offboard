@@ -40,7 +40,7 @@ private:
 };
 
 TeleopPx4::TeleopPx4():
-linear_(0.5),
+linear_(1),
 angular_(0.5),
 l_scale_(0.5),
 a_scale_(0.5)

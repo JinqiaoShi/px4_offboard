@@ -2,7 +2,7 @@
 #ifndef CtrlPx4_H_
 #define CtrlPx4_H_
 
-#define ACCELERATION
+#define VELOCITY
 
 class CtrlPx4
 {

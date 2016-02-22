@@ -45,20 +45,12 @@ bool CtrlPx4::commandUpdate()
       #endif
 
     }
-<<<<<<< HEAD
   //}
   //else
   //{
   //  ROS_INFO("In Manual Mode");
   //}
 
-=======
-  }
-  else
-  {
-    //ROS_INFO("In Manual Mode");
-  }
->>>>>>> 641aef6ceebd1eced7568ac42689d3eba663d93b
 
 }
 
@@ -99,7 +91,7 @@ void CtrlPx4::stateCallback(const mavros_msgs::State state)
 
 void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in)
 {
-    OffSw = (rc_in.channels[6]>1200); //
+    OffSw = (rc_in.channels[5]<1200) && (rc_in.channels[7]>1200); //
 }
 
 void CtrlPx4::joyStateCallback(const std_msgs::Byte state)
