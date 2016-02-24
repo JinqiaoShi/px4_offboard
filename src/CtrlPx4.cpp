@@ -6,45 +6,44 @@ CtrlPx4::CtrlPx4()
   mavros_acc_pub         =   nh.advertise<geometry_msgs::Vector3Stamped>("/mavros/setpoint_accel/accel",50);
   mavros_pos_pub         =   nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local",50);
   mavros_vel_pub         =   nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel",50);
+
   mavros_set_mode_client =   nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
   mavros_armed_client    =   nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+
+  local_vel_sub          =   nh.subscribe("/mavros/local_position/velocity",100, &CtrlPx4::velCallback,this);
+  local_pos_sub          =   nh.subscribe("/mavros/local_position/pose",100, &CtrlPx4::poseCallback,this);
   state_sub              =   nh.subscribe("/mavros/state", 100, &CtrlPx4::stateCallback,this);
-  radio_vel_sub          =   nh.subscribe("/mavros/rc/in",100,&CtrlPx4::radioCallback,this);
-  joy_vel_sub            =   nh.subscribe("/joy/cmd_vel",100,&CtrlPx4::joyVelCallback,this);
-  joy_state_sub          =   nh.subscribe("/joy/state",100,&CtrlPx4::joyStateCallback,this);
+  radio_mode_sub         =   nh.subscribe("/mavros/rc/in", 100,&CtrlPx4::radioCallback,this);
+  joy_vel_sub            =   nh.subscribe("/joy/cmd_vel",  100,&CtrlPx4::joyVelCallback,this);
+  joy_state_sub          =   nh.subscribe("/joy/state",    100,&CtrlPx4::joyStateCallback,this);
 };
 
-bool CtrlPx4::commandUpdate()
-{
+bool CtrlPx4::commandUpdate(){
 //  if (OffSw) {
-    if (!stateCmp())
-    {
+    if (!stateCmp()){
+        // arming
         set_armed.request.value = state_set.armed;
         mavros_armed_client.call(set_armed);
 
+        // switch to offboard
         if (state_set.offboard)
           set_mode.request.custom_mode = "OFFBOARD";
-        else
-          set_mode.request.custom_mode = "MANUAL";
 
         ros::spinOnce();
         mavros_set_mode_client.call(set_mode);
     }
-    // if state is armed publish fmu_controller commnad
-    if (state_set.armed)
-    {
 
-      #ifdef VELOCITY
-      mavros_vel_pub.publish(fmu_controller_setpoint);
-      ROS_INFO("Command: [x: %f y:%f z: %f, yaw:%f]", fmu_controller_setpoint.twist.linear.x,fmu_controller_setpoint.twist.linear.y,fmu_controller_setpoint.twist.linear.z,fmu_controller_setpoint.twist.angular.z);
-      #endif
-
-      #ifdef ACCELERATION
-      mavros_acc_pub.publish(fmu_controller_setpoint);
-      ROS_INFO("Command: [x: %f y:%f z: %f]", fmu_controller_setpoint.vector.x,fmu_controller_setpoint.vector.y,fmu_controller_setpoint.vector.z);
-      #endif
-
-    }
+    // if state is armed publish fcu commnad
+    if (state_set.armed){
+      if (state_set.takeoff)
+          takeoff(2,0.5); // takeoff to 2m with velocity 0.5m/s
+      else if (state_set.land)
+          land(0.3);
+      else{
+      mavros_vel_pub.publish(fcu_vel_setpoint);
+      ROS_INFO("Velocity Command: [x: %f y:%f z: %f, yaw:%f]", fcu_vel_setpoint.twist.linear.x,fcu_vel_setpoint.twist.linear.y,fcu_vel_setpoint.twist.linear.z,fcu_vel_setpoint.twist.angular.z);
+      }
+  }
   //}
   //else
   //{
@@ -62,25 +61,35 @@ bool CtrlPx4::stateCmp()
 }
 
 
+void CtrlPx4::takeoff()
+{
+
+}
+
+void CtrlPx4::land()
+{
+
+}
+
 void CtrlPx4::joyVelCallback(const geometry_msgs::Twist twist)
 {
     #ifdef VELOCITY
-    fmu_controller_setpoint.twist.linear.x = twist.linear.x;
-    fmu_controller_setpoint.twist.linear.y = twist.linear.y;
-    fmu_controller_setpoint.twist.linear.z = twist.linear.z;
-    fmu_controller_setpoint.twist.angular.x = twist.angular.x;
-    fmu_controller_setpoint.twist.angular.y = twist.angular.y;
-    fmu_controller_setpoint.twist.angular.z = twist.angular.z;
+    fcu_vel_setpoint.twist.linear.x = twist.linear.x;
+    fcu_vel_setpoint.twist.linear.y = twist.linear.y;
+    fcu_vel_setpoint.twist.linear.z = twist.linear.z;
+    fcu_vel_setpoint.twist.angular.x = twist.angular.x;
+    fcu_vel_setpoint.twist.angular.y = twist.angular.y;
+    fcu_vel_setpoint.twist.angular.z = twist.angular.z;
     #endif
 
-    #ifdef ACCELERATION
-    fmu_controller_setpoint.vector.x = twist.linear.x;
-    fmu_controller_setpoint.vector.y = twist.linear.y;
-    fmu_controller_setpoint.vector.z = twist.linear.z;
-    // fmu_controller_setpoint.vector.twist.angular.x = twist.angular.x;
-    // fmu_controller_setpoint.vector.twist.angular.y = twist.angular.y;
-    // fmu_controller_setpoint.vector.twist.angular.z = twist.angular.z;
+
+    #ifdef POSE
+    fcu_pos_setpoint.pose.position.x = twist.linear.x;
+    fcu_pos_setpoint.pose.position.y = twist.linear.y;
+    fcu_pos_setpoint.pose.position.z = twist.linear.z;
     #endif
+
+
 }
 
 void CtrlPx4::stateCallback(const mavros_msgs::State state)
@@ -91,20 +100,22 @@ void CtrlPx4::stateCallback(const mavros_msgs::State state)
 
 void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in)
 {
-    OffSw = (rc_in.channels[5]<1200) && (rc_in.channels[7]>1200); //
+    OffSw = (rc_in.channels[5]>1700);
 }
 
-void CtrlPx4::joyStateCallback(const std_msgs::Byte state)
+void CtrlPx4::joyStateCallback(const std_msgs::ByteMultiArray state)
 {
-    switch (state.data)
+    switch (state.data.at(0)) // arming status
     {
       //DISARM
       case 0:
+        ROS_INFO("Standby");
         state_set.armed    =   0;
         state_set.offboard =   0;
         break;
       //ARM
       case 1:
+        ROS_INFO("Armed");
         state_set.armed    =   1;
         state_set.offboard =   1;
         break;
@@ -115,4 +126,25 @@ void CtrlPx4::joyStateCallback(const std_msgs::Byte state)
         state_set.offboard =   0;
         break;
     }
+
+    if (state.data.at(1)>100) // takeoff detected
+        state_set.takeoff = 1;
+    else
+        state_set.takeoff = 0;
+
+    if (state.data.at(1)<-100)
+        state_set.land = 1;
+    else
+        state_set.land = 0;
+
+
 }
+
+void CtrlPx4::poseCallback(const geometry_msgs::PoseStamped)
+{
+
+};
+void CtrlPx4::velCallback(const geometry_msgs::TwistStamped)
+{
+
+};

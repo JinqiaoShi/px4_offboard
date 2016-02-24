@@ -2,12 +2,26 @@
 #include <signal.h>
 #include <termios.h>
 #include <stdio.h>
+#include <time.h>
 
+#define SITL
+
+
+#ifdef SITL
 // Control 1 : Arrow Keys
 #define KEYCODE_RIGHT 0x43          //  right
 #define KEYCODE_LEFT  0x44          //  left
 #define KEYCODE_UP    0x41          // forward
 #define KEYCODE_DOWN  0x42          // backward
+
+#endif
+
+#ifdef PX4
+#define KEYCODE_UP 0x43          //  right
+#define KEYCODE_DOWN  0x44          //  left
+#define KEYCODE_RIGHT  0x41          // forward
+#define KEYCODE_LEFT  0x42          // backward
+#endif
 
 //Control 2 : WASD
 #define KEYCODE_W   0x77            // throttle up
@@ -40,7 +54,7 @@ private:
 };
 
 TeleopPx4::TeleopPx4():
-linear_(1),
+linear_(0.3),
 angular_(0.5),
 l_scale_(0.5),
 a_scale_(0.5)
@@ -48,7 +62,7 @@ a_scale_(0.5)
     nh_.param("scale_angular", a_scale_, a_scale_);
     nh_.param("scale_linear", l_scale_, l_scale_);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("/joy/cmd_vel", 100);
-    state_pub_ = nh_.advertise<std_msgs::Byte>("/joy/state", 100);
+    state_pub_ = nh_.advertise<std_msgs::ByteMultiArray>("/joy/state", 100);
 }
 
 int kfd = 0;
@@ -71,7 +85,7 @@ int main(int argc, char** argv)
 
 void TeleopPx4::keyLoop()
 {
-  char c;
+  char c, c_last;
   bool dirty = false;
   // last velocity setpoint (use for relative control)
   geometry_msgs::Twist lastTwist;
@@ -88,10 +102,18 @@ void TeleopPx4::keyLoop()
   puts("Reading from keyboard");
   puts("---------------------------");
   puts("Use arrow keys to move the drone.");
-  std_msgs::Byte state;
+
+  std_msgs::ByteMultiArray state;
+  bool keyheld;
+  state.data.clear();
+  state.data.resize(10);
+
+  ros::Rate loop_rate(50);
 
   for(;;)
   {
+
+    clock_t  now = clock();
     // get the next event from the keyboard
     if(read(kfd, &c, 1) < 0)
     {
@@ -106,19 +128,19 @@ void TeleopPx4::keyLoop()
     {
       case KEYCODE_E:
         ROS_INFO("DISARM");
-        state.data = 0; //Disarm
+        state.data.at(0) = 0; //Disarm
         dirty = true;
         break;
 
       case KEYCODE_Q:
         ROS_INFO("ARMING");
-        state.data = 1; //arm
+        state.data.at(0) = 1; //arm
         dirty = true;
         break;
 
       case KEYCODE_C:
         ROS_INFO("ARMED BUT NO OFFBOARD COMMAND");
-        state.data = 2;
+        state.data.at(0) = 2;
         dirty = true;
         break;
 
@@ -153,25 +175,39 @@ void TeleopPx4::keyLoop()
 
       case KEYCODE_W:
         ROS_INFO("UP");
+        state.data.at(1) += (state.data.at(1)<127) && 1 ;
         twist.linear.z = lastTwist.linear.z+linear_;
         dirty = true;
         break;
       case KEYCODE_S:
         ROS_INFO("DOWN");
+        state.data.at(1) -= (state.data.at(1)>-127) && 1;
         twist.linear.z = lastTwist.linear.z-linear_;
         dirty = true;
         break;
     }
 
 
-    if(dirty ==true)
+    keyheld = ((clock()-now)>400||state.data.at(1)==127||state.data.at(1)==-127);
+
+    ROS_INFO("Keyheld time is %d", keyheld);
+    if(dirty && keyheld) //detect if land or takeoff command also issued
     {
+      if (state.data.at(1)>100)
+      {
+        twist.linear.x = 0;
+        twist.linear.y = 0;
+        twist.linear.z = 0;
+      }
+
       vel_pub_.publish(twist);
       state_pub_.publish(state);
       dirty=false;
+      state.data.at(1)=0;
     }
 
     copyTwist(&lastTwist,twist);
+    loop_rate.sleep();
   }
 
 
