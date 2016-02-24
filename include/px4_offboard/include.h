@@ -18,27 +18,31 @@
 #include "geometry_msgs/PoseStamped.h"
 #include <sstream>
 
+
+
+
 typedef enum control_t{
   VELOCITY,POSITION,RAW
 }myControl;
 
 typedef struct vel_s{
-  int vx;
-  int vy;
-  int vz;
-}myVel
+  double vx;
+  double vy;
+  double vz;
+}myVel;
 
 typedef struct pos_s{
-  int px;
-  int py;
-  int pz;
-}myPos
+  double px;
+  double py;
+  double pz;
+}myPos;
 
 typedef struct state_s{
   bool armed;
   bool offboard;
   bool takeoff;
   bool land;
+
   myControl control;
   myVel vel;
   myPos pos;

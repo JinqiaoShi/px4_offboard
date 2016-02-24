@@ -2,7 +2,10 @@
 #ifndef CtrlPx4_H_
 #define CtrlPx4_H_
 
-#define VELOCITY
+#define VELOCITY // POSE
+
+#define SITL //PX4
+
 
 class CtrlPx4
 {
@@ -11,8 +14,8 @@ public:
 
   bool commandUpdate();
   // flight state
-  myState state_set{0,0,VELOCITY}, state_read{0,0,VELOCITY};
-  
+  myState state_set{0,0,0,0}, state_read{0,0,0,0};
+
 
 private:
   // subscriber callbacks
@@ -23,13 +26,16 @@ private:
   void poseCallback(const geometry_msgs::PoseStamped);
   void velCallback(const geometry_msgs::TwistStamped);
 
-  void takeoff(int altitude, int velcity);
-  void land   (int velocity);
+  bool takeoff(double altitude, double velcity);
+  bool land   (double velocity);
+  void hover   ();
+
+
   bool stateCmp();
-
-
   bool commandUpdate(myControl); // TODO
   bool commandUpdate(int, myControl);
+
+
 
 
   bool OffSw;
@@ -54,7 +60,6 @@ private:
   mavros_msgs::SetMode set_mode;
   mavros_msgs::CommandBool set_armed;
 
-  geometry_msgs:: Vector3Stamped fcu_acc_setpoint;
   geometry_msgs::TwistStamped    fcu_vel_setpoint;
   geometry_msgs::PoseStamped     fcu_pos_setpoint;
 

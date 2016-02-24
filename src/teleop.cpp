@@ -54,7 +54,7 @@ private:
 };
 
 TeleopPx4::TeleopPx4():
-linear_(0.3),
+linear_ (0.5),
 angular_(0.5),
 l_scale_(0.5),
 a_scale_(0.5)
@@ -113,7 +113,6 @@ void TeleopPx4::keyLoop()
   for(;;)
   {
 
-    clock_t  now = clock();
     // get the next event from the keyboard
     if(read(kfd, &c, 1) < 0)
     {
@@ -175,31 +174,19 @@ void TeleopPx4::keyLoop()
 
       case KEYCODE_W:
         ROS_INFO("UP");
-        state.data.at(1) += (state.data.at(1)<127) && 1 ;
         twist.linear.z = lastTwist.linear.z+linear_;
         dirty = true;
         break;
       case KEYCODE_S:
         ROS_INFO("DOWN");
-        state.data.at(1) -= (state.data.at(1)>-127) && 1;
         twist.linear.z = lastTwist.linear.z-linear_;
         dirty = true;
         break;
     }
 
 
-    keyheld = ((clock()-now)>400||state.data.at(1)==127||state.data.at(1)==-127);
-
-    ROS_INFO("Keyheld time is %d", keyheld);
-    if(dirty && keyheld) //detect if land or takeoff command also issued
+    if(dirty) //detect if land or takeoff command also issued
     {
-      if (state.data.at(1)>100)
-      {
-        twist.linear.x = 0;
-        twist.linear.y = 0;
-        twist.linear.z = 0;
-      }
-
       vel_pub_.publish(twist);
       state_pub_.publish(state);
       dirty=false;
