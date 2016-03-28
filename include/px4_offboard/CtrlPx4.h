@@ -2,7 +2,7 @@
 #ifndef CtrlPx4_H_
 #define CtrlPx4_H_
 
-#define VELOCITY // POSE
+#define POSITION // POSE
 
 #define SITL //PX4
 

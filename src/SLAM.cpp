@@ -1,11 +1,11 @@
 #include "px4_offboard/include.h"
 #include "CtrlPx4.cpp"
 
-int main(int argc, char **argv)
+int main(int argv, char **argc)
 {
-  ros::init(argc,argv,"px4_controller");
+  ros::init(argv,argc,"px4_controller");
   CtrlPx4 controller;
-  ros::Rate loop_rate(120);
+  ros::Rate loop_rate(150);
 
   while(ros::ok())
   {

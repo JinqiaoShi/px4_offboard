@@ -35,6 +35,7 @@ typedef struct pos_s{
   double px;
   double py;
   double pz;
+  double yaw;
 }myPos;
 
 typedef struct state_s{
