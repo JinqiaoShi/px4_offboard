@@ -16,38 +16,35 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "px4_offboard/JoyCommand.h"
 #include <sstream>
 
+typedef enum control_t { VELOCITY, POSITION, RAW } my_control;
 
-
-
-typedef enum control_t{
-  VELOCITY,POSITION,RAW
-}myControl;
-
-typedef struct vel_s{
+typedef struct vel_s {
   double vx;
   double vy;
   double vz;
-}myVel;
+} my_vel;
 
-typedef struct pos_s{
+typedef struct pos_s {
   double px;
   double py;
   double pz;
-  double yaw;
-}myPos;
+  double qw;
+  double qz;
+} my_pos;
 
-typedef struct state_s{
+typedef struct state_s {
+  bool dirty;
   bool armed;
   bool offboard;
   bool takeoff;
   bool land;
 
-  myControl control;
-  myVel vel;
-  myPos pos;
-}myState;
-
+  my_control control;
+  my_vel vel;
+  my_pos pos;
+} my_state;
 
 #endif

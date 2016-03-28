@@ -1,201 +1,162 @@
-#include "px4_offboard/include.h"
 #include "px4_offboard/CtrlPx4.h"
+#include "px4_offboard/include.h"
 
+CtrlPx4::CtrlPx4() {
 
-CtrlPx4::CtrlPx4()
-{
-  mavros_pos_pub         =   nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local",100);
-  mavros_vel_pub         =   nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel",100);
+#if SITL
+  off_sw_ = 1;
+#endif
 
-  mavros_set_mode_client =   nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
-  mavros_armed_client    =   nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+  mavros_pos_pub_ = nh_.advertise<geometry_msgs::PoseStamped>(
+      "/mavros/setpoint_position/local", 100);
+  mavros_vel_pub_ = nh_.advertise<geometry_msgs::TwistStamped>(
+      "/mavros/setpoint_velocity/cmd_vel", 100);
 
-  local_vel_sub          =   nh.subscribe("/mavros/local_position/velocity",100, &CtrlPx4::velCallback,this);
-  local_pos_sub          =   nh.subscribe("/mavros/local_position/pose",100, &CtrlPx4::poseCallback,this);
+  mavros_set_mode_client_ =
+      nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+  mavros_armed_client_ =
+      nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
 
-  state_sub              =   nh.subscribe("/mavros/state", 100, &CtrlPx4::stateCallback,this);
-  radio_mode_sub         =   nh.subscribe("/mavros/rc/in", 100,&CtrlPx4::radioCallback,this);
-  joy_vel_sub            =   nh.subscribe("/joy/cmd_vel",  100,&CtrlPx4::joyVelCallback,this);
-  joy_state_sub          =   nh.subscribe("/joy/state",    100,&CtrlPx4::joyStateCallback,this);
-
-
-  #ifdef SITL
-  OffSw = 1;
-  #endif
-
+  local_vel_sub_ = nh_.subscribe("/mavros/local_position/velocity", 100,
+                                 &CtrlPx4::velCallback, this);
+  local_pos_sub_ = nh_.subscribe("/mavros/local_position/pose", 100,
+                                 &CtrlPx4::poseCallback, this);
+  state_sub_ =
+      nh_.subscribe("/mavros/state", 100, &CtrlPx4::stateCallback, this);
+  radio_sub_ =
+      nh_.subscribe("/mavros/rc/in", 100, &CtrlPx4::radioCallback, this);
+  joy_sub_ = nh_.subscribe("/joy/cmd_mav", 100, &CtrlPx4::joyCallback, this);
+  // joy_state_sub_ =
+  //     nh_.subscribe("/joy/state", 100, &CtrlPx4::joyStateCallback, this);
 };
 
-bool CtrlPx4::commandUpdate(){
+bool CtrlPx4::commandUpdate() {
+  if (off_sw_) {
+    if (!stateCmp()) {
+      // arming
+      // set_armed.request.value = state_set_.armed;
+      // mavros_armed_client_.call(set_armed);
+      // TODO local takeoff and land
+      // if (state_set_.armed)
+      // {
+      //   set_mode_.request.custom_mode = "OFFBOARD";
+      //   mavros_set_mode_client_.call(set_mode_);
+      //   takeoff(2,1);
+      // }
+      // else
+      //   land(0.3);
 
- if (OffSw) {
-    if (!stateCmp()){
-
-        // arming
-        set_armed.request.value = state_set.armed;
-        mavros_armed_client.call(set_armed);
-        // TODO local takeoff and land; arm = takeoff, disarm = land
-        // if (state_set.armed)
-        // {
-        //   set_mode.request.custom_mode = "OFFBOARD";
-        //   mavros_set_mode_client.call(set_mode);
-        //   takeoff(2,1);
-        // }
-        // else
-        //   land(0.3);
-        if (state_set.offboard)
-          set_mode.request.custom_mode = "OFFBOARD";
-        else
-          set_mode.request.custom_mode = "MANUAL";
-
-        ros::spinOnce();
-        mavros_set_mode_client.call(set_mode);
+      if (state_set_.offboard) {
+        set_mode_.request.custom_mode = "OFFBOARD";
+        mavros_set_mode_client_.call(set_mode_);
+      }
     }
 
-    if (state_set.armed){
-      #ifdef VELOCITY
-      mavros_vel_pub.publish(fcu_vel_setpoint);
-      ROS_INFO("Velocity Command: [x: %f y:%f z: %f, yaw:%f]", fcu_vel_setpoint.twist.linear.x,fcu_vel_setpoint.twist.linear.y,fcu_vel_setpoint.twist.linear.z,fcu_vel_setpoint.twist.angular.z);
-      #endif
+    if (state_set_.armed) {
+#if VELOCITY
+      mavros_vel_pub__.publish(fcu_vel_setpoint_);
+#endif
+#if POSITION
+      mavros_pos_pub_.publish(fcu_pos_setpoint_);
+#endif
+    }
 
-      #ifdef POSITION
-      mavros_pos_pub.publish(fcu_pos_setpoint);
-      ROS_INFO("Position Command: [x: %f y:%f z: %f, yaw:%f]", fcu_pos_setpoint.pose.position.x,fcu_pos_setpoint.pose.position.y,fcu_pos_setpoint.pose.position.z,fcu_pos_setpoint.pose.orientation.w);
-      #endif
-
-      }
     ros::spinOnce();
   }
-  
-  else
-  {
-   ROS_INFO("In Manual Mode");
+
+  else {
+    ROS_INFO("In Manual Mode");
   }
-
-
 }
 
-bool CtrlPx4::stateCmp()
-{
-  myState *read = &state_read;
-  myState *set  = &state_set;
+bool CtrlPx4::stateCmp() {
+  my_state *read = &state_read_;
+  my_state *set = &state_set_;
 
-  bool in_the_sky    =  (read->armed == set->armed && set->armed == 1);//&& read->takeoff;
-  bool on_the_ground =  (read->armed == set->armed && set->armed == 0);//&& read->land; TODO local takeoff/land
+  bool arm = (read->armed == set->armed);
+  bool offboard = (read->offboard == set->offboard);
+  bool in_the_sky = (arm && set->armed == 1); //&& read->takeoff;
+  bool on_the_ground =
+      (arm && set->armed == 0); //&& read->land; TODO local takeoff/land
 
-  return (in_the_sky||on_the_ground)&&(set->offboard == read->offboard);
+  return offboard;
 }
 
-
-bool CtrlPx4::takeoff(double altitude, double velocity)
-{
-  double current_height = state_read.pos.pz;
+bool CtrlPx4::takeoff(double altitude, double velocity) {
+  double current_height = state_read_.pos.pz;
   ROS_INFO("Current Height: %f", current_height);
-  if (current_height < altitude)
-  {
-    fcu_vel_setpoint.twist.linear.z = velocity;
-    mavros_vel_pub.publish(fcu_vel_setpoint);
-  }
-  else
-  {
+  if (current_height < altitude) {
+    fcu_vel_setpoint_.twist.linear.z = velocity;
+    mavros_vel_pub_.publish(fcu_vel_setpoint_);
+  } else {
     ROS_INFO("Finished Takeoff");
     hover();
   }
-  state_read.takeoff =  current_height>altitude;
+  state_read_.takeoff = current_height > altitude;
 
-  return current_height>altitude ;
+  return current_height > altitude;
 }
 
-bool CtrlPx4::land(double velocity)
-{
+bool CtrlPx4::land(double velocity) {}
 
-}
+void CtrlPx4::hover() {
+#if VELOCITY
+  fcu_vel_setpoint_.twist.linear.x = 0;
+  fcu_vel_setpoint_.twist.linear.y = 0;
+  fcu_vel_setpoint_.twist.linear.z = 0;
+  mavros_vel_pub_.publish(fcu_vel_setpoint_);
+#endif
 
-void CtrlPx4::hover()
-{
-  #ifdef VELOCITY
-  fcu_vel_setpoint.twist.linear.x = 0;
-  fcu_vel_setpoint.twist.linear.y = 0;
-  fcu_vel_setpoint.twist.linear.z = 0;
-  mavros_vel_pub.publish(fcu_vel_setpoint);
-  #endif
-
-  #ifdef POSITION
-
-  #endif
-
-
+#if POSITION
+// Does Not Apply
+#endif
 };
 
+void CtrlPx4::joyCallback(const px4_offboard::JoyCommand joy) {
+#if VELOCITY
+  fcu_vel_setpoint_.twist.linear.x = joy.position.x;
+  fcu_vel_setpoint_.twist.linear.y = joy.position.y;
+  fcu_vel_setpoint_.twist.linear.z = joy.position.z;
+  fcu_vel_setpoint_.twist.angular.z = joy.quarternion.z;
+  ROS_INFO("Velocity Command: [x: %f y:%f z: %f, yaw:%f]",
+           fcu_vel_setpoint_.twist.linear.x, fcu_vel_setpoint_.twist.linear.y,
+           fcu_vel_setpoint_.twist.linear.z, fcu_vel_setpoint_.twist.angular.z);
+#endif
 
+#if POSITION // only add on current position reading
+  fcu_pos_setpoint_.pose.position.x = joy.position.x + state_read_.pos.px;
+  fcu_pos_setpoint_.pose.position.y = joy.position.y + state_read_.pos.py;
+  fcu_pos_setpoint_.pose.position.z = joy.position.z + state_read_.pos.pz;
 
-
-void CtrlPx4::joyVelCallback(const geometry_msgs::Twist twist)
-{
-    #ifdef VELOCITY
-    fcu_vel_setpoint.twist.linear.x = twist.linear.x;
-    fcu_vel_setpoint.twist.linear.y = twist.linear.y;
-    fcu_vel_setpoint.twist.linear.z = twist.linear.z;
-    fcu_vel_setpoint.twist.angular.z = twist.angular.z;
-    #endif
-
-
-    #ifdef POSITION　//only add on current position reading
-
-      fcu_pos_setpoint.pose.position.x    = twist.linear.x + state_read.pos.px;
-      fcu_pos_setpoint.pose.position.y    = twist.linear.y + state_read.pos.py;
-      fcu_pos_setpoint.pose.position.z    = twist.linear.z + state_read.pos.pz;
-      fcu_pos_setpoint.pose.orientation.w = twist.angular.z+ state_read.pos.yaw;
-    #endif
-
-
+  fcu_pos_setpoint_.pose.orientation.w = joy.orientation.w;
+  fcu_pos_setpoint_.pose.orientation.z = joy.orientation.z;
+  ROS_INFO("Position Command: [x: %f y:%f z: %f, qw:%f]",
+           fcu_pos_setpoint_.pose.position.x, fcu_pos_setpoint_.pose.position.y,
+           fcu_pos_setpoint_.pose.position.z,
+           fcu_pos_setpoint_.pose.orientation.w);
+#endif
+  state_set_.offboard = joy.offboard;
+  state_set_.armed = joy.arm;
 }
 
-void CtrlPx4::stateCallback(const mavros_msgs::State state)
-{
-	 state_read.armed = (state.armed==128);
-	 state_read.offboard = (strcmp(state.mode.c_str(),"OFFBOARD")==0);
+void CtrlPx4::stateCallback(const mavros_msgs::State vehicle_state) {
+  state_read_.armed = (vehicle_state.armed == 128);
+  state_read_.offboard = (strcmp(vehicle_state.mode.c_str(), "OFFBOARD") == 0);
 }
 
-void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in)
-{
-    OffSw = (rc_in.channels[5]>1700);
+void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in) {
+  off_sw_ = (rc_in.channels[5] > 1700);
 }
 
-void CtrlPx4::joyStateCallback(const std_msgs::ByteMultiArray state)
-{
-    switch (state.data.at(0)) // arming status
-    {
-      //DISARM
-      case 0:
-        ROS_INFO("Standby");
-        state_set.armed    =   0;
-        state_set.offboard =   0;
-        break;
-
-      //ARM
-      case 1:
-        ROS_INFO("Armed");
-        state_set.armed    =   1;
-        state_set.offboard =   1;
-        break;
-
-    }
-
+void CtrlPx4::poseCallback(const geometry_msgs::PoseStamped pos_read) {
+  state_read_.pos.px = pos_read.pose.position.x;
+  state_read_.pos.py = pos_read.pose.position.y;
+  state_read_.pos.pz = pos_read.pose.position.z;
+  state_read_.pos.qw = pos_read.pose.orientation.w;
+  state_read_.pos.qz = pos_read.pose.orientation.z;
 };
-
-
-
-void CtrlPx4::poseCallback(const geometry_msgs::PoseStamped posRead)
-{
-
-  state_read.pos.px  = posRead.pose.position.x;
-  state_read.pos.py  = posRead.pose.position.y;
-  state_read.pos.pz  = posRead.pose.position.z;
-  state_read.pos.yaw = posRead.pose.orientation.w;
-};
-void CtrlPx4::velCallback(const geometry_msgs::TwistStamped velRead)
-{
-  state_read.vel.vx = velRead.twist.linear.x;
-  state_read.vel.vy = velRead.twist.linear.y;
-  state_read.vel.vz = velRead.twist.linear.z;
+void CtrlPx4::velCallback(const geometry_msgs::TwistStamped vel_read) {
+  state_read_.vel.vx = vel_read.twist.linear.x;
+  state_read_.vel.vy = vel_read.twist.linear.y;
+  state_read_.vel.vz = vel_read.twist.linear.z;
 };

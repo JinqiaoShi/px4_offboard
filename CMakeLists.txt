@@ -9,15 +9,15 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  message_generation
 )
 
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(
+    FILES
+    JoyCommand.msg
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -34,10 +34,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   geometry_msgs
+   std_msgs
+ )
 
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
@@ -49,7 +50,15 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 INCLUDE_DIRS include
 LIBRARIES px4_offboard
-CATKIN_DEPENDS mavros roscpp rospy std_msgs
+CATKIN_DEPENDS
+  mavros
+  mavros_msgs
+  roscpp
+  rospy
+  std_msgs
+  geometry_msgs
+  message_runtime
+
 #  DEPENDS system_lib
 )
 
