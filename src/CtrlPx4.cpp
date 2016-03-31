@@ -124,13 +124,22 @@ void CtrlPx4::joyCallback(const px4_offboard::JoyCommand joy) {
 #endif
 
 #if POSITION // only add on current position reading
-  fcu_pos_setpoint_.pose.position.x = joy.position.x + state_read_.pos.px;
-  fcu_pos_setpoint_.pose.position.y = joy.position.y + state_read_.pos.py;
-  fcu_pos_setpoint_.pose.position.z = joy.position.z + state_read_.pos.pz;
 
-  fcu_pos_setpoint_.pose.orientation.w = joy.orientation.w;
+  // transform global setpoint to local setpoint
+  Vector3f pos_body, pos_nav;
+  Quaternion<float> q_n2b(state_read_.pos.q);
+  pos_body << joy.position.x, joy.position.y, joy.position.z;
+  pos_nav = q_n2b._transformVector(pos_body);
+
+  // note this is now the NED Frame　!!
+  // We want ENU frame setpoint
+  fcu_pos_setpoint_.pose.position.x = pos_nav(1) + state_read_.pos.px;
+  fcu_pos_setpoint_.pose.position.y = pos_nav(0) + state_read_.pos.py;
+  fcu_pos_setpoint_.pose.position.z = pos_nav(2) - state_read_.pos.pz;
+  fcu_pos_setpoint_.pose.orientation.w = joy.orientation.w; // TODO add local
   fcu_pos_setpoint_.pose.orientation.z = joy.orientation.z;
-  ROS_INFO("Position Command: [x: %f y:%f z: %f, qw:%f]",
+
+  ROS_INFO("Position Command: [x: %f y:%f z: %f, q(0):%f]",
            fcu_pos_setpoint_.pose.position.x, fcu_pos_setpoint_.pose.position.y,
            fcu_pos_setpoint_.pose.position.z,
            fcu_pos_setpoint_.pose.orientation.w);
@@ -145,15 +154,18 @@ void CtrlPx4::stateCallback(const mavros_msgs::State vehicle_state) {
 }
 
 void CtrlPx4::radioCallback(const mavros_msgs::RCIn rc_in) {
-  off_sw_ = (rc_in.channels[5] > 1700);
+  off_sw_ = (rc_in.channels[6] > 1000);
 }
 
 void CtrlPx4::poseCallback(const geometry_msgs::PoseStamped pos_read) {
   state_read_.pos.px = pos_read.pose.position.x;
   state_read_.pos.py = pos_read.pose.position.y;
   state_read_.pos.pz = pos_read.pose.position.z;
-  state_read_.pos.qw = pos_read.pose.orientation.w;
-  state_read_.pos.qz = pos_read.pose.orientation.z;
+
+  state_read_.pos.q(0) = pos_read.pose.orientation.w; // qw
+  state_read_.pos.q(1) = pos_read.pose.orientation.x; // qx
+  state_read_.pos.q(2) = pos_read.pose.orientation.y; // qy
+  state_read_.pos.q(3) = pos_read.pose.orientation.z; // qz
 };
 void CtrlPx4::velCallback(const geometry_msgs::TwistStamped vel_read) {
   state_read_.vel.vx = vel_read.twist.linear.x;

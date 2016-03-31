@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(px4_offboard)
 
 
+find_package(catkin REQUIRED cmake_modules)
+find_package(Eigen REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   mavros
   mavros_msgs
@@ -62,7 +65,7 @@ CATKIN_DEPENDS
 #  DEPENDS system_lib
 )
 
-###########
+###########{}
 ## Build ##
 ###########
 
@@ -72,8 +75,8 @@ CATKIN_DEPENDS
 
 include_directories(
   include
+  ${Eigen_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
-
 )
 
 

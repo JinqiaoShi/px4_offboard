@@ -168,7 +168,7 @@ void TeleopPx4::keyLoop() {
 
     case KEYCODE_A:
       ROS_INFO("Yaw Left");
-      angular_ -= 0.5;                               // yaw angle decrease
+      angular_ += 0.5;                               // yaw angle decrease
       command.orientation.z = sin(0.5 * (angular_)); // convert to q
       command.orientation.w = cos(0.5 * (angular_));
       dirty = true;
@@ -176,7 +176,7 @@ void TeleopPx4::keyLoop() {
 
     case KEYCODE_D:
       ROS_INFO("Yaw Right");
-      angular_ += 0.5;                               // yaw angle increase
+      angular_ -= 0.5;                               // yaw angle increase
       command.orientation.z = sin(0.5 * (angular_)); // convert to q
       command.orientation.w = cos(0.5 * (angular_));
       dirty = true;

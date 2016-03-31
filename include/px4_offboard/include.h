@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include <iostream>
 #include <string.h>
+#include <Eigen/Dense>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/ManualControl.h>
 #include <mavros_msgs/CommandBool.h>
@@ -19,6 +20,8 @@
 #include "px4_offboard/JoyCommand.h"
 #include <sstream>
 
+using namespace Eigen;
+
 typedef enum control_t { VELOCITY, POSITION, RAW } my_control;
 
 typedef struct vel_s {
@@ -28,11 +31,10 @@ typedef struct vel_s {
 } my_vel;
 
 typedef struct pos_s {
-  double px;
+  double px; // current POSITION
   double py;
   double pz;
-  double qw;
-  double qz;
+  Vector4f q; // current rotation
 } my_pos;
 
 typedef struct state_s {
