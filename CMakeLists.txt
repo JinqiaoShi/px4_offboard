@@ -83,6 +83,8 @@ include_directories(
 #add_executable(basic src/basic.cpp)
 #target_link_libraries(basic ${catkin_LIBRARIES})
 
+add_dependencies(SLAM ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 add_executable(teleop src/teleop.cpp)
 target_link_libraries(teleop ${catkin_LIBRARIES})
 
@@ -101,7 +103,6 @@ set(CMAKE_C_FLGAS "-std=gnu++11")
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(px4_offboard ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 # add_executable(px4_offboard_node src/px4_offboard_node.cpp)
