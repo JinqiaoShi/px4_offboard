@@ -83,13 +83,13 @@ include_directories(
 #add_executable(basic src/basic.cpp)
 #target_link_libraries(basic ${catkin_LIBRARIES})
 
-add_dependencies(SLAM ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_executable(teleop src/teleop.cpp)
 target_link_libraries(teleop ${catkin_LIBRARIES})
 
 add_executable(SLAM src/SLAM.cpp)
 target_link_libraries(SLAM ${catkin_LIBRARIES})
+add_dependencies(SLAM ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 set(CMAKE_CXX_FLAGS  "-std=c++11")
