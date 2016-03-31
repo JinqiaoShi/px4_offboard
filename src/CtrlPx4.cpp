@@ -131,11 +131,11 @@ void CtrlPx4::joyCallback(const px4_offboard::JoyCommand joy) {
   pos_body << joy.position.x, joy.position.y, joy.position.z;
   pos_nav = q_n2b._transformVector(pos_body);
 
-  // note this is now the NED Frame　!!
+  // note this is now the NED Frame!! duhh.. that's kinda dumb...
   // We want ENU frame setpoint
   fcu_pos_setpoint_.pose.position.x = pos_nav(1) + state_read_.pos.px;
   fcu_pos_setpoint_.pose.position.y = pos_nav(0) + state_read_.pos.py;
-  fcu_pos_setpoint_.pose.position.z = pos_nav(2) - state_read_.pos.pz;
+  fcu_pos_setpoint_.pose.position.z = -pos_nav(2) + state_read_.pos.pz;
   fcu_pos_setpoint_.pose.orientation.w = joy.orientation.w; // TODO add local
   fcu_pos_setpoint_.pose.orientation.z = joy.orientation.z;
 
