@@ -125,24 +125,28 @@ void CtrlPx4::joyCallback(const px4_offboard::JoyCommand joy) {
 
 #if POSITION // only add on current position reading
 
-  // transform global setpoint to local setpoint
+  // decompose local setpoint to navigation setpoint;
   Vector3f pos_body, pos_nav;
   Quaternion<float> q_n2b(state_read_.pos.q);
   pos_body << joy.position.x, joy.position.y, joy.position.z;
   pos_nav = q_n2b._transformVector(pos_body);
 
+  // Addition to yaw angle
+  float w_temp = cos(0.5 * (state_read_.pos.yaw + joy.yaw));
+  float z_temp = sin(0.5 * (state_read_.pos.yaw + joy.yaw));
+
+  ROS_INFO("Pos_nav is %f", pos_nav(0));
   // note this is now the NED Frame!! duhh.. that's kinda dumb...
   // We want ENU frame setpoint
-  fcu_pos_setpoint_.pose.position.x = pos_nav(1) + state_read_.pos.px;
-  fcu_pos_setpoint_.pose.position.y = pos_nav(0) + state_read_.pos.py;
-  fcu_pos_setpoint_.pose.position.z = -pos_nav(2) + state_read_.pos.pz;
-  fcu_pos_setpoint_.pose.orientation.w = joy.orientation.w; // TODO add local
-  fcu_pos_setpoint_.pose.orientation.z = joy.orientation.z;
+  fcu_pos_setpoint_.pose.position.x = pos_nav(0) + state_read_.pos.px;
+  fcu_pos_setpoint_.pose.position.y = pos_nav(1) + state_read_.pos.py;
+  fcu_pos_setpoint_.pose.position.z = -pos_nav(2) + state_read_.pos.pz; // Down
+  fcu_pos_setpoint_.pose.orientation.w = w_temp; // TODO add local
+  fcu_pos_setpoint_.pose.orientation.z = z_temp;
 
-  ROS_INFO("Position Command: [x: %f y:%f z: %f, q(0):%f]",
-           fcu_pos_setpoint_.pose.position.x, fcu_pos_setpoint_.pose.position.y,
-           fcu_pos_setpoint_.pose.position.z,
-           fcu_pos_setpoint_.pose.orientation.w);
+  ROS_INFO("Pos_nav is: [x: %f y:%f z: %f, yaw:%f]", pos_nav(0), pos_nav(1),
+           pos_nav(2), joy.yaw);
+
 #endif
   state_set_.offboard = joy.offboard;
   state_set_.armed = joy.arm;
@@ -166,6 +170,8 @@ void CtrlPx4::poseCallback(const geometry_msgs::PoseStamped pos_read) {
   state_read_.pos.q(1) = pos_read.pose.orientation.x; // qx
   state_read_.pos.q(2) = pos_read.pose.orientation.y; // qy
   state_read_.pos.q(3) = pos_read.pose.orientation.z; // qz
+
+  state_read_.pos.yaw = acos(pos_read.pose.orientation.w) * 2;
 };
 void CtrlPx4::velCallback(const geometry_msgs::TwistStamped vel_read) {
   state_read_.vel.vx = vel_read.twist.linear.x;

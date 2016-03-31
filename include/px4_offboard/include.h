@@ -31,9 +31,10 @@ typedef struct vel_s {
 } my_vel;
 
 typedef struct pos_s {
-  double px; // current POSITION
+  double px; // current POSITION + yaw
   double py;
   double pz;
+  double yaw;
   Vector4f q; // current rotation
 } my_pos;
 
