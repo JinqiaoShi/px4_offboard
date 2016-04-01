@@ -1,0 +1,17 @@
+<launch>
+
+<include file="$(find mavros)/launch/px4_sitl.launch"></include>
+<include file="$(find checkerboard_detector)/checkerboard_detector.launch"></include>
+<include file="$(find openni2_launch)/launch/openni2.launch"></include>
+
+       <!-- launch offboard control node -->
+<!-- <node pkg="px4_offboard" type="teleop" name="teleop" output="screen">
+</node> -->
+
+<node pkg="px4_offboard" type="checker" name="checker" output="screen">
+</node>
+
+<node pkg="px4_offboard" type="SLAM" name="fcu" output="screen">
+</node>
+
+</launch>

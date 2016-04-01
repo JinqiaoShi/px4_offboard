@@ -1,10 +1,13 @@
 <launch>
 
- <node pkg="px4_offboard" type="teleop" name="teleop" output="screen">
- </node>
+       <!-- launch offboard control node -->
+<include file="$(find mavros)/launch/px4_sitl.launch"></include>
+<node pkg="px4_offboard" type="teleop" name="teleop" output="screen"> </node>
 
- <node pkg="px4_offboard" type="SLAM" name="fcu" output="screen">
- </node>
+<!-- <node pkg="px4_offboard" type="checker" name="checker" output="screen">
+</node> -->
+
+<node pkg="px4_offboard" type="SLAM" name="fcu" output="screen">
+</node>
 
 </launch>
-

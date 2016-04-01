@@ -26,6 +26,9 @@ CtrlPx4::CtrlPx4() {
   radio_sub_ =
       nh_.subscribe("/mavros/rc/in", 100, &CtrlPx4::radioCallback, this);
   joy_sub_ = nh_.subscribe("/joy/cmd_mav", 100, &CtrlPx4::joyCallback, this);
+  // joy_sub_ = nh_.subscribe("/checker/cmd_mav", 100, &CtrlPx4::joyCallback,
+  // this);
+
   // joy_state_sub_ =
   //     nh_.subscribe("/joy/state", 100, &CtrlPx4::joyStateCallback, this);
 };
@@ -135,7 +138,6 @@ void CtrlPx4::joyCallback(const px4_offboard::JoyCommand joy) {
   float w_temp = cos(0.5 * (state_read_.pos.yaw + joy.yaw));
   float z_temp = sin(0.5 * (state_read_.pos.yaw + joy.yaw));
 
-  ROS_INFO("Pos_nav is %f", pos_nav(0));
   // note this is now the NED Frame!! duhh.. that's kinda dumb...
   // We want ENU frame setpoint
   fcu_pos_setpoint_.pose.position.x = pos_nav(0) + state_read_.pos.px;
