@@ -2,6 +2,7 @@
 
 <include file="$(find mavros)/launch/px4_sitl.launch"></include>
 <include file="$(find checkerboard_detector)/checkerboard_detector.launch"></include>
+
 <include file="$(find openni2_launch)/launch/openni2.launch"></include>
 
        <!-- launch offboard control node -->
